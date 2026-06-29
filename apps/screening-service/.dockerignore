@@ -1,0 +1,7 @@
+# The image builds from source (multi-stage), so keep the context small but
+# keep mvnw/.mvn/pom.xml/src. Only exclude build output and local cruft.
+target/
+.git/
+.gitignore
+.idea/
+*.iml

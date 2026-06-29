@@ -1,0 +1,335 @@
+{
+  "info": {
+    "_postman_id": "a1f2e3d4-0011-4c22-9a33-5b6c7d8e9f01",
+    "name": "KYC Service",
+    "description": "Every endpoint of the **KYC Service** (`apps/kyc-service`) — the applicant-onboarding REST API.\n\nBase URL variable: `kycBaseUrl` (default `http://localhost:8080`).\n\n## Demo order\n\nRun the **Applicants** folder top to bottom. The three \"Register\" requests are crafted to produce the three screening outcomes once the Screening Service processes their events:\n\n| Request | Name / country | Screening decision |\n|---------|----------------|--------------------|\n| Register — CLEARED | Amina Yusuf / SD | `CLEARED` |\n| Register — REVIEW | Reza Karimi / IR (high-risk) | `REVIEW` |\n| Register — BLOCKED | John Doe / US (watchlist) | `BLOCKED` |\n\nThe CLEARED request also sets an `X-Correlation-Id` and asserts the service echoes it back — the same id is copied into the Kafka event, so you can grep both services' logs for one onboarding. The created id is saved into `applicantId` for the GET requests below.\n\nSee `apps/postman/README.md` for the full Day-1 demo script.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Applicants",
+      "item": [
+        {
+          "name": "Register applicant — CLEARED (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Mint a correlation id so we can follow this onboarding across both services.",
+                  "pm.collectionVariables.set('correlationId', 'demo-' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Location header points at the new applicant', () => {",
+                  "    pm.expect(pm.response.headers.get('Location')).to.match(/\\/applicants\\/\\d+$/);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('new applicant starts PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                  "pm.test('correlation id is echoed back', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Correlation-Id')).to.eql(pm.collectionVariables.get('correlationId'));",
+                  "});",
+                  "pm.collectionVariables.set('applicantId', body.id);",
+                  "pm.environment.set('applicantId', body.id);",
+                  "console.log('Registered applicant', body.id, 'correlationId', pm.collectionVariables.get('correlationId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Correlation-Id", "value": "{{correlationId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Amina Yusuf\",\n  \"nationalId\": \"SD-1990-000123\",\n  \"dateOfBirth\": \"1990-04-12\",\n  \"country\": \"SD\",\n  \"email\": \"amina.yusuf@example.com\",\n  \"attributes\": {\n    \"channel\": \"mobile\",\n    \"branch\": \"khartoum\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants"]
+            },
+            "description": "Registers a clean applicant. Returns `201` + `Location` and the `ApplicantResponse` (status `PENDING`). Persists the applicant and an outbox row in one transaction; the outbox dispatcher then publishes an `applicant-registered` event to Kafka. After screening, this one is **CLEARED**."
+          },
+          "response": []
+        },
+        {
+          "name": "Register applicant — REVIEW (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('starts PENDING', () => pm.expect(pm.response.json().status).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Reza Karimi\",\n  \"nationalId\": \"IR-1988-554120\",\n  \"dateOfBirth\": \"1988-09-30\",\n  \"country\": \"IR\",\n  \"email\": \"reza.karimi@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants"]
+            },
+            "description": "Country `IR` is on the (illustrative) high-risk list, so after screening this applicant needs manual **REVIEW** with a raised risk score. The KYC API itself still returns `201 PENDING` — the decision happens downstream in the Screening Service."
+          },
+          "response": []
+        },
+        {
+          "name": "Register applicant — BLOCKED (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('starts PENDING', () => pm.expect(pm.response.json().status).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"nationalId\": \"US-1979-110078\",\n  \"dateOfBirth\": \"1979-01-15\",\n  \"country\": \"US\",\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants"]
+            },
+            "description": "The name \"John Doe\" is on the (fake) sanctions/PEP watchlist, so after screening this applicant is **BLOCKED** with risk score 100. Again, the KYC API returns `201 PENDING`; the watchlist hit is decided by the Screening Service."
+          },
+          "response": []
+        },
+        {
+          "name": "Register applicant — invalid (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('uniform ApiError body with per-field violations', () => {",
+                  "    pm.expect(body).to.have.property('status', 400);",
+                  "    pm.expect(body.violations).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('names the offending fields', () => {",
+                  "    const fields = body.violations.map(v => v.field).join(',');",
+                  "    pm.expect(fields).to.include('fullName');",
+                  "    pm.expect(fields).to.include('email');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"\",\n  \"nationalId\": \"\",\n  \"dateOfBirth\": \"2999-01-01\",\n  \"country\": \"\",\n  \"email\": \"not-an-email\"\n}"
+            },
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants"]
+            },
+            "description": "Breaks every Bean Validation rule: blank `fullName`/`nationalId`/`country`, a future `dateOfBirth` (`@Past`), a malformed `email`. `ValidationExceptionMapper` turns the `ConstraintViolationException` into a `400` with a uniform `ApiError` listing each field."
+          },
+          "response": []
+        },
+        {
+          "name": "Get applicant by id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the applicant we registered', () => {",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('applicantId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants/{{applicantId}}",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants", "{{applicantId}}"]
+            },
+            "description": "Reads back the applicant created by \"Register applicant — CLEARED\" using the saved `applicantId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get applicant — not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('uniform ApiError body', () => pm.expect(pm.response.json()).to.have.property('status', 404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants/999999",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants", "999999"]
+            },
+            "description": "An unknown id. `ApplicantNotFoundExceptionMapper` returns `404` with the same uniform `ApiError` shape."
+          },
+          "response": []
+        },
+        {
+          "name": "List applicants (paged)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns a JSON array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{kycBaseUrl}}/applicants?page=0&size=20",
+              "host": ["{{kycBaseUrl}}"],
+              "path": ["applicants"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Newest-first paginated listing via `@QueryParam`/`@DefaultValue` (`page` defaults to `0`, `size` to `20`). After the three registrations above you should see all three applicants."
+          },
+          "response": []
+        }
+      ],
+      "description": "The applicant onboarding API: `POST /applicants`, `GET /applicants/{id}`, `GET /applicants`."
+    },
+    {
+      "name": "Health & metrics",
+      "item": [
+        {
+          "name": "Health — aggregate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{kycBaseUrl}}/q/health", "host": ["{{kycBaseUrl}}"], "path": ["q", "health"] },
+            "description": "SmallRye Health roll-up of all checks, including the custom `OutboxBacklogHealthCheck`."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — liveness",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{kycBaseUrl}}/q/health/live", "host": ["{{kycBaseUrl}}"], "path": ["q", "health", "live"] },
+            "description": "Liveness probe — \"is the process alive?\" (Kubernetes restarts on failure)."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — readiness",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{kycBaseUrl}}/q/health/ready", "host": ["{{kycBaseUrl}}"], "path": ["q", "health", "ready"] },
+            "description": "Readiness probe — \"can it serve traffic?\" Includes the datasource check (DB reachable)."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — started",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{kycBaseUrl}}/q/health/started", "host": ["{{kycBaseUrl}}"], "path": ["q", "health", "started"] },
+            "description": "Startup probe — \"has the app finished booting?\""
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus metrics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/plain" }],
+            "url": { "raw": "{{kycBaseUrl}}/q/metrics", "host": ["{{kycBaseUrl}}"], "path": ["q", "metrics"] },
+            "description": "Micrometer/Prometheus scrape endpoint. After registering, look for `applicants_registered_total` and the HTTP server timers."
+          },
+          "response": []
+        }
+      ],
+      "description": "Operational endpoints exposed by SmallRye Health + Micrometer."
+    }
+  ],
+  "variable": [
+    { "key": "kycBaseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "applicantId", "value": "", "type": "string" },
+    { "key": "correlationId", "value": "", "type": "string" }
+  ]
+}

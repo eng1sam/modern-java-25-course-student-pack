@@ -1,0 +1,124 @@
+{
+  "info": {
+    "_postman_id": "b2e3f4a5-0022-4d33-8b44-6c7d8e9f0a12",
+    "name": "Screening Service",
+    "description": "Every endpoint of the **Screening Service** (`apps/screening-service`) — the Kafka consumer that runs a background check on each registered applicant.\n\nBase URL variable: `screeningBaseUrl` (default `http://localhost:8082`).\n\nThis service has **no write API** — it reacts to `applicant-registered` events from Kafka. `GET /screenings` is a read-only view of recent decisions, used here to *prove the event flowed through*. So the demo is: register applicants in the **KYC Service** collection (with Kafka running), wait a moment, then run \"Recent screenings\" here and watch the `CLEARED` / `REVIEW` / `BLOCKED` decisions appear.\n\nSee `apps/postman/README.md` for the full Day-1 demo script.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Screenings",
+      "item": [
+        {
+          "name": "Recent screenings (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns a JSON array of decisions', () => pm.expect(body).to.be.an('array'));",
+                  "if (!body.length) {",
+                  "    console.log('No screenings yet — register applicants in the KYC Service collection (with Kafka up) and retry in a second.');",
+                  "} else {",
+                  "    pm.test('each screening has a decision and a risk score', () => {",
+                  "        pm.expect(body[0]).to.have.property('decision');",
+                  "        pm.expect(body[0]).to.have.property('riskScore');",
+                  "    });",
+                  "    const byDecision = body.reduce((m, s) => (m[s.decision] = (m[s.decision] || 0) + 1, m), {});",
+                  "    console.log('Decisions so far:', JSON.stringify(byDecision));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{screeningBaseUrl}}/screenings",
+              "host": ["{{screeningBaseUrl}}"],
+              "path": ["screenings"]
+            },
+            "description": "Most-recent-first list of background-check results. Each entry: `applicantId`, `fullName`, `nationalId`, `decision` (`CLEARED`/`REVIEW`/`BLOCKED`), `riskScore`, `reason`, `screenedAt`.\n\nThe test script logs a tally of decisions to the Postman console (View → Show Postman Console) so you can narrate it live."
+          },
+          "response": []
+        }
+      ],
+      "description": "The read-only view of completed screenings."
+    },
+    {
+      "name": "Health & metrics",
+      "item": [
+        {
+          "name": "Health — aggregate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{screeningBaseUrl}}/q/health", "host": ["{{screeningBaseUrl}}"], "path": ["q", "health"] },
+            "description": "SmallRye Health roll-up, including the custom `ScreeningLivenessCheck`."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — liveness",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{screeningBaseUrl}}/q/health/live", "host": ["{{screeningBaseUrl}}"], "path": ["q", "health", "live"] },
+            "description": "Liveness probe."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — readiness",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{screeningBaseUrl}}/q/health/ready", "host": ["{{screeningBaseUrl}}"], "path": ["q", "health", "ready"] },
+            "description": "Readiness probe — includes the Kafka connector health (consumer connected)."
+          },
+          "response": []
+        },
+        {
+          "name": "Health — started",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{screeningBaseUrl}}/q/health/started", "host": ["{{screeningBaseUrl}}"], "path": ["q", "health", "started"] },
+            "description": "Startup probe."
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus metrics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/plain" }],
+            "url": { "raw": "{{screeningBaseUrl}}/q/metrics", "host": ["{{screeningBaseUrl}}"], "path": ["q", "metrics"] },
+            "description": "Micrometer/Prometheus scrape endpoint. Look for `screenings_processed_total`, `screenings_duplicate_total`, and `screenings_decision_total{decision=...}`."
+          },
+          "response": []
+        }
+      ],
+      "description": "Operational endpoints exposed by SmallRye Health + Micrometer."
+    }
+  ],
+  "variable": [
+    { "key": "screeningBaseUrl", "value": "http://localhost:8082", "type": "string" }
+  ]
+}
