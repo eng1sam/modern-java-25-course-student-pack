@@ -44,6 +44,6 @@
 
 ## Going further
 
-Override the host port and confirm with `ps` · read the real multi-stage `apps/order-service/Dockerfile`.
+Override the host port and confirm with `ps` · read the real multi-stage `apps/kyc-service/Dockerfile`.
 
 Full brief: `labs/day-02/README.md` · Concepts: `docs/content/day-02/`.

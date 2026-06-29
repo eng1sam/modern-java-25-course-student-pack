@@ -44,7 +44,7 @@ modern-java-25-course-student-pack/
 | 06 | `day-06-postgresql` | PostgreSQL & `psql` | `psql` inside the Postgres container |
 | 07 | `day-07-kafka` | Kafka from the CLI | the Kafka CLI inside the broker container |
 | 08 | `day-08-quarkus-fundamentals` | Quarkus fundamentals | `quarkus create app` + `quarkus dev` |
-| 09 | `day-09-quarkus-persistence` | Quarkus & persistence | the Order Service from `checkpoint/day-08` |
+| 09 | `day-09-quarkus-persistence` | Quarkus & persistence | the KYC Service from `checkpoint/day-08` |
 | 10 | `day-10-messaging-capstone` | Messaging & capstone | the platform from `checkpoint/day-09` |
 
 ## Why some modules have no Java
@@ -79,12 +79,12 @@ That writes `slides/day-01.pdf … day-10.pdf` and `dist/databytes-java25-studen
 - **App-building days (08–10):** the finished reference app is the Git tag `checkpoint/day-NN`:
 
   ```bash
-  git checkout checkpoint/day-09      # the Order Service with persistence, fully working
+  git checkout checkpoint/day-09      # the KYC Service with persistence, fully working
   ```
 - **Tool days (01, 02, 06, 07):** no code to "solve" — the brief's commands and acceptance
   checklist are the answer key.
 
 Checking out `checkpoint/day-NN` materialises the running reference implementation under
-`apps/` (order-service + notification-service) at that day's state. The deeper concept
+`apps/` (kyc-service + screening-service) at that day's state. The deeper concept
 write-ups live in the [course repo](https://github.com/githubmo/modern-java-25-course)'s
 `docs/content/day-NN/`.
