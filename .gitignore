@@ -1,0 +1,18 @@
+# Java / Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# Quarkus
+.quarkus/
+
+# Generated slide PDFs (produced in the course repo via `task pack`)
+slides/
+
+# Build artifacts
+dist/
+
+# OS / editor
+.DS_Store
+.idea/
+*.iml

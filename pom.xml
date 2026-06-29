@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.databytes.course</groupId>
+    <artifactId>student-pack</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Data Bytes Java 25 — Student Pack</name>
+    <description>
+        One Maven module per course day (10 days). Days without Java are placeholder modules
+        that carry the day's lab brief and assets; the running reference application lives in
+        the course repo (githubmo/modern-java-25-course) under apps/ and at the
+        checkpoint/day-NN Git tags. See README.md.
+    </description>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <modules>
+        <module>day-01-git</module>
+        <module>day-02-docker</module>
+        <module>day-03-java-rosetta</module>
+        <module>day-04-concurrency-i</module>
+        <module>day-05-concurrency-ii</module>
+        <module>day-06-postgresql</module>
+        <module>day-07-kafka</module>
+        <module>day-08-quarkus-fundamentals</module>
+        <module>day-09-quarkus-persistence</module>
+        <module>day-10-messaging-capstone</module>
+    </modules>
+</project>

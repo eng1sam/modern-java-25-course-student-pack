@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.databytes.course</groupId>
+        <artifactId>student-pack</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>day-04-concurrency-i</artifactId>
+    <packaging>pom</packaging>
+    <name>Java Concurrency I — cheap threads &amp; a race</name>
+    <description>Java Concurrency I — cheap threads &amp; a race — see this module's README.md for the lab brief and run commands.</description>
+</project>
